@@ -17,5 +17,5 @@
     <plugin name="CHECK_PING" class="it.jnrpe.plugin.CheckPing" />
     <plugin name="CHECK_PROCS" class="it.jnrpe.plugin.CheckProcs" />
     <plugin name="CHECK_TIME" class="it.jnrpe.plugin.CheckTime" />
-
+    <plugin name="CHECK_SNMP" class="it.jnrpe.plugin.CheckSnmp" />
 </plugins>
