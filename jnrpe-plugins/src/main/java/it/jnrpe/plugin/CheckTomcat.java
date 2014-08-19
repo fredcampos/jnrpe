@@ -80,7 +80,7 @@ public class CheckTomcat extends PluginBase {
      */
     @Override
     public final ReturnValue execute(final ICommandLine cl) throws BadThresholdException {
-        log.debug("check_tomcat");
+        LOG.debug(getContext(), "check_tomcat");
         String username = cl.getOptionValue("username");
         String password = cl.getOptionValue("password");
         String hostname = cl.getOptionValue("hostname");
@@ -120,14 +120,14 @@ public class CheckTomcat extends PluginBase {
             throw new BadThresholdException("Error: " + e.getMessage(), e);
         }
         Properties props = new Properties();
-        props.put("Authorization", "Basic " + encoded);
+        props.setProperty("Authorization", "Basic " + encoded);
         String response = null;
         String errmsg = null;
         try {
             response = Utils.getUrl(new URL(url), props, timeout * 1000);
 
         } catch (Exception e) {
-            log.info("Plugin execution failed : " + e.getMessage(), e);
+            LOG.info(getContext(), "Plugin execution failed : " + e.getMessage(), e);
             errmsg = e.getMessage();
         }
 
@@ -158,11 +158,11 @@ public class CheckTomcat extends PluginBase {
      */
     private ReturnValue analyseStatus(final String xml, final String warning, final String critical, boolean checkMemory, boolean checkThreads)
             throws BadThresholdException {
-        StringBuffer buff = new StringBuffer();
-        log.debug("checkThreads " + checkThreads);
-        log.debug("checkMemory " + checkMemory);
-        log.debug("critical " + critical);
-        log.debug("warning	 " + warning);
+        StringBuilder buff = new StringBuilder();
+        LOG.debug(getContext(), "checkThreads " + checkThreads);
+        LOG.debug(getContext(), "checkMemory " + checkMemory);
+        LOG.debug(getContext(), "critical " + critical);
+        LOG.debug(getContext(), "warning	 " + warning);
 
         ReturnValue retVal = new ReturnValue(Status.OK, null);
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -171,7 +171,7 @@ public class CheckTomcat extends PluginBase {
             builder = factory.newDocumentBuilder();
         } catch (ParserConfigurationException e) {
             // This should never happen...
-            throw new IllegalStateException(e);
+            throw new IllegalStateException(e.getMessage(), e);
         }
         int freeMem = 0;
         int totalMem = 0;
@@ -202,8 +202,14 @@ public class CheckTomcat extends PluginBase {
             maxMemMb = maxMem / (1024 * 1024);
             availableMemMb = availableMem / (1024 * 1024);
             memUse = (maxMem - availableMem);
-            buff.append("JVM memory use " + Utils.formatSize(memUse) + " ");
-            buff.append("Free: " + Utils.formatSize(freeMem) + ", Total: " + Utils.formatSize(totalMem) + ", Max: " + Utils.formatSize(maxMem) + " ");
+            buff.append("JVM memory use ").append(Utils.formatSize(memUse)).append(' ');
+            buff.append("Free: ")
+                .append(Utils.formatSize(freeMem))
+                .append(", Total: ")
+                .append(Utils.formatSize(totalMem))
+                .append(", Max: ")
+                .append(Utils.formatSize(maxMem))
+                .append(' ');
 
             if (checkMemory) {
                 String warn = warning != null ? getRangeValue(warning, maxMem, true) : null;
@@ -211,13 +217,13 @@ public class CheckTomcat extends PluginBase {
 
                 if (crit != null && ThresholdUtil.isValueInRange(crit, availableMemMb)) {
                     return new ReturnValue(Status.CRITICAL, "Free memory critical: " + availableMemMb + " MB available").withPerformanceData(
-                            "memory", new Long(maxMemMb), !critical.contains("%") ? UnitOfMeasure.megabytes : UnitOfMeasure.percentage, warning,
-                            critical, 0L, new Long(maxMem));
+                            "memory", Long.valueOf(maxMemMb), !critical.contains("%") ? UnitOfMeasure.megabytes : UnitOfMeasure.percentage, warning,
+                            critical, 0L, Long.valueOf(maxMem));
                 }
                 if (warn != null && ThresholdUtil.isValueInRange(warn, availableMemMb)) {
                     return new ReturnValue(Status.WARNING, "Free memory low: " + availableMem / (1024 * 1024) + " MB available / " + buff.toString())
-                            .withPerformanceData("memory", new Long(maxMemMb), !warning.contains("%") ? UnitOfMeasure.megabytes
-                                    : UnitOfMeasure.percentage, warning, critical, 0L, new Long(maxMem));
+                            .withPerformanceData("memory", Long.valueOf(maxMemMb), !warning.contains("%") ? UnitOfMeasure.megabytes
+                                    : UnitOfMeasure.percentage, warning, critical, 0L, Long.valueOf(maxMem));
                 }
             }
 
@@ -232,7 +238,7 @@ public class CheckTomcat extends PluginBase {
                 currentThreadCount = Integer.parseInt(threadInfo.getAttribute("currentThreadCount"));
                 currentThreadsBusy = Integer.parseInt(threadInfo.getAttribute("currentThreadsBusy"));
                 threadsAvailable = maxThreads - currentThreadsBusy;
-                log.debug("Connector " + connectorName + " maxThreads: " + maxThreads + ", currentThreadCount:" + currentThreadCount
+                LOG.debug(getContext(), "Connector " + connectorName + " maxThreads: " + maxThreads + ", currentThreadCount:" + currentThreadCount
                         + ", currentThreadsBusy: " + currentThreadsBusy);
 
                 String msg = connectorName + " - thread count: " + currentThreadCount + ", current threads busy: " + currentThreadsBusy
@@ -244,7 +250,7 @@ public class CheckTomcat extends PluginBase {
 
                     if (critical != null && ThresholdUtil.isValueInRange(crit, threadsAvailable)) {
                         return new ReturnValue(Status.CRITICAL, "CRITICAL - Free " + connectorName + " threads: " + threadsAvailable)
-                                .withMessage(msg).withPerformanceData(connectorName + " threads", new Long(threadsAvailable),
+                                .withMessage(msg).withPerformanceData(connectorName + " threads", Long.valueOf(threadsAvailable),
                                         !critical.contains("%") ? UnitOfMeasure.counter : UnitOfMeasure.percentage, warning, critical, 0L,
                                         new Long(maxThreads));
                     }
@@ -308,7 +314,7 @@ public class CheckTomcat extends PluginBase {
             hadRangeStart = true;
             value = value.substring(1, value.length());
         }
-        String val = "" + getValue(value, factor, memory);
+        String val = String.valueOf(getValue(value, factor, memory));
 
         if (hadRangeStart) {
             val = ":" + val;

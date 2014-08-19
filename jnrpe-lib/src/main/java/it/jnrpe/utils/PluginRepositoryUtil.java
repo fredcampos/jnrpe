@@ -16,6 +16,7 @@
 package it.jnrpe.utils;
 
 import it.jnrpe.plugins.IPluginInterface;
+import it.jnrpe.plugins.IPluginRepository;
 import it.jnrpe.plugins.PluginConfigurationException;
 import it.jnrpe.plugins.PluginDefinition;
 import it.jnrpe.plugins.PluginOption;
@@ -65,7 +66,7 @@ public final class PluginRepositoryUtil {
      * @throws PluginConfigurationException
      *             -
      */
-    public static void loadFromXmlPluginPackageDefinitions(final PluginRepository repo, final ClassLoader cl, final InputStream in)
+    public static void loadFromXmlPluginPackageDefinitions(final IPluginRepository repo, final ClassLoader cl, final InputStream in)
             throws PluginConfigurationException {
         for (PluginDefinition pd : loadFromXmlPluginPackageDefinitions(cl, in)) {
             repo.addPluginDefinition(pd);
@@ -314,13 +315,13 @@ public final class PluginRepositoryUtil {
     private static PluginOption parsePluginOption(final Element option) {
         PluginOption po = new PluginOption();
         po.setArgName(option.attributeValue("argName"));
-        po.setArgsCount(Integer.parseInt(option.attributeValue("argsCount", "1")));
+        po.setArgsCount(Integer.valueOf(option.attributeValue("argsCount", "1")));
         po.setArgsOptional(Boolean.valueOf(option.attributeValue("optionalArgs", "false")));
         po.setDescription(option.attributeValue("description"));
-        po.setHasArgs(Boolean.valueOf(option.attributeValue("hasArgs", "false")));
+        po.setHasArgs(Boolean.parseBoolean(option.attributeValue("hasArgs", "false")));
         po.setLongOpt(option.attributeValue("longName"));
         po.setOption(option.attributeValue("shortName"));
-        po.setRequired(Boolean.valueOf(option.attributeValue("required", "false")));
+        po.setRequired(Boolean.parseBoolean(option.attributeValue("required", "false")));
         po.setType(option.attributeValue("type"));
         po.setValueSeparator(option.attributeValue("separator"));
 

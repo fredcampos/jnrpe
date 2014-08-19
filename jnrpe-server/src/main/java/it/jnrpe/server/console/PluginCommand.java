@@ -15,6 +15,7 @@
  *******************************************************************************/
 package it.jnrpe.server.console;
 
+import it.jnrpe.IJNRPEExecutionContext;
 import it.jnrpe.JNRPE;
 import it.jnrpe.ReturnValue;
 import it.jnrpe.plugins.IPluginInterface;
@@ -22,10 +23,13 @@ import it.jnrpe.plugins.IPluginRepository;
 import it.jnrpe.plugins.PluginOption;
 import it.jnrpe.plugins.PluginProxy;
 import it.jnrpe.plugins.UnknownPluginException;
+import it.jnrpe.utils.internal.InjectionUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.charset.Charset;
 
 import jline.console.ConsoleReader;
 
@@ -43,17 +47,22 @@ public class PluginCommand extends ConsoleCommand {
 
     private final String pluginName;
     private final IPluginRepository pluginRepository;
-
     private final IPluginInterface plugin;
 
-    public PluginCommand(ConsoleReader consoleReader, JNRPE jnrpe, String pluginName, IPluginRepository pr) throws UnknownPluginException {
+    private final IJNRPEExecutionContext context;
+    
+    private final Charset charset;
+    
+    public PluginCommand(ConsoleReader consoleReader, IPluginRepository pluginRepo, JNRPE jnrpe, String pluginName) throws UnknownPluginException {
         super(consoleReader, jnrpe);
         this.pluginName = pluginName;
-        this.pluginRepository = pr;
-        this.plugin = pr.getPlugin(pluginName);
+        this.pluginRepository = pluginRepo;
+        this.plugin = pluginRepository.getPlugin(pluginName);
+        this.charset = jnrpe.getExecutionContext().getCharset();
+        this.context = jnrpe.getExecutionContext();
     }
 
-    public boolean execute(String[] args) throws Exception {
+    public boolean execute(final String[] args) throws Exception {
 
         Parser p = new Parser();
         p.setGroup(getCommandLineGroup());
@@ -70,7 +79,8 @@ public class PluginCommand extends ConsoleCommand {
             return false;
         }
         PluginProxy plugin = (PluginProxy) pluginRepository.getPlugin(pluginName);
-
+        InjectionUtils.inject(plugin, context);
+        //plugin.setContext(context);
         ReturnValue retVal = plugin.execute(args);
 
         getConsole().println(retVal.getMessage());
@@ -84,7 +94,7 @@ public class PluginCommand extends ConsoleCommand {
     private Option toOption(PluginOption po) {
         DefaultOptionBuilder oBuilder = new DefaultOptionBuilder();
 
-        oBuilder.withShortName(po.getOption()).withDescription(po.getDescription()).withRequired(po.getRequired().equalsIgnoreCase("true"));
+        oBuilder.withShortName(po.getOption()).withDescription(po.getDescription()).withRequired("true".equalsIgnoreCase(po.getRequired()));
 
         if (po.getLongOpt() != null) {
             oBuilder.withLongName(po.getLongOpt());
@@ -134,14 +144,14 @@ public class PluginCommand extends ConsoleCommand {
         Group g = getCommandLineGroup();
         HelpFormatter hf = new HelpFormatter(null, null, null, getConsole().getTerminal().getWidth());
         hf.setGroup(g);
-        hf.setPrintWriter(new PrintWriter(bout));
+        hf.setPrintWriter(new PrintWriter(new OutputStreamWriter(bout, charset)));
         hf.printUsage();
 
-        String usage = new String(bout.toByteArray());
+        String usage = new String(bout.toByteArray(), charset);
 
         String[] lines = usage.split("\\n");
 
-        StringBuffer res = new StringBuffer();
+        StringBuilder res = new StringBuilder();
 
         for (int i = 1; i < lines.length; i++) {
             res.append(lines[i]);
@@ -157,7 +167,7 @@ public class PluginCommand extends ConsoleCommand {
         HelpFormatter hf = new HelpFormatter("  ", null, null, getConsole().getTerminal().getWidth());
         hf.setGroup(g);
 
-        PrintWriter pw = new PrintWriter(bout);
+        PrintWriter pw = new PrintWriter(new OutputStreamWriter(bout, charset));
         hf.setPrintWriter(pw);
         hf.printHelp();
 
@@ -167,7 +177,7 @@ public class PluginCommand extends ConsoleCommand {
         getConsole().println(highlight("Command Line: "));
         getConsole().println("  " + getName() + " " + getCommandLine());
         getConsole().println(highlight("Usage:"));
-        getConsole().println(new String(bout.toByteArray()));
+        getConsole().println(new String(bout.toByteArray(), charset));
 
     }
 

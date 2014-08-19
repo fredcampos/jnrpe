@@ -15,7 +15,6 @@
  *******************************************************************************/
 package it.jnrpe.events;
 
-import java.util.Map;
 
 /**
  * The interface that all the events must implement.
@@ -23,17 +22,8 @@ import java.util.Map;
  * @author Massimiliano Ziccardi
  */
 public interface IJNRPEEvent {
-    /**
-     * The event name.
-     *
-     * @return The event name
-     */
-    String getEventName();
 
-    /**
-     * The event parameters.
-     *
-     * @return The event parameters
-     */
-    Map<String, Object> getEventParams();
+    public String getEventName();
+    public String getMessage();
+    public Object getSource();
 }

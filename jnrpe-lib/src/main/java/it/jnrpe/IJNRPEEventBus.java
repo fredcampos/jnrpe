@@ -13,22 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *******************************************************************************/
-package it.jnrpe.events;
+package it.jnrpe;
 
 /**
- * This object represent an 'EXCEPTION' parameter. It is usually used with the
- * LogEvents to pass the exception to be logged.
- *
+ * The event bus that will dispatch all the events regarding JNRPE.
+ * 
  * @author Massimiliano Ziccardi
  */
-public class EventExceptionParam extends EventParam {
+public interface IJNRPEEventBus {
+
     /**
-     * Builds and initializes the exception parameter.
-     *
-     * @param exc
-     *            The exception.
+     * Registers an event listener.
+     * 
+     * The method that will receive the event must be marked with the {@link Subscribe} annotation.
+     * @param object the event listener.
      */
-    public EventExceptionParam(final Throwable exc) {
-        super("EXCEPTION", exc);
-    }
+    void register(final Object object);
+    
+    /**
+     * This method must be called to post a new event.
+     * 
+     * @param event The vent object
+     */
+    void post(final Object event);
 }

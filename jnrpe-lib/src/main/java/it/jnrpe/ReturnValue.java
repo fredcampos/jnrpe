@@ -162,7 +162,7 @@ public final class ReturnValue {
      */
     public ReturnValue withStatus(final Status status) {
         if (status == null) {
-            throw new IllegalArgumentException("Status cannot be null");
+            throw new IllegalArgumentException("Status can't be null");
         }
 
         statusCode = status;
@@ -212,7 +212,7 @@ public final class ReturnValue {
         if (performanceDataList.isEmpty()) {
             return messageString;
         }
-        StringBuffer res = new StringBuffer(messageString).append("|");
+        StringBuilder res = new StringBuilder(messageString).append('|');
         for (PerformanceData pd : performanceDataList) {
             res.append(pd.toPerformanceString()).append(' ');
         }

@@ -15,56 +15,81 @@
  *******************************************************************************/
 package it.jnrpe;
 
-import it.jnrpe.events.IJNRPEEventListener;
+import it.jnrpe.commands.CommandRepository;
+import it.jnrpe.plugins.IPluginRepository;
 
 import java.nio.charset.Charset;
-import java.util.Collection;
 
 /**
  * A context to be passed to all the object managing the communication.
  * 
  * @author Massimiliano Ziccardi
  */
-public class JNRPEExecutionContext {
+public class JNRPEExecutionContext implements IJNRPEExecutionContext {
 
     /**
-     * The list of listeners.
+     * The event bus.
      */
-    private final Collection<IJNRPEEventListener> eventListenersList;
-
+    private final IJNRPEEventBus eventBus;
+    
     /**
      * Configured charset.
      */
     private final Charset charset;
 
+//    /**
+//     * The plugin repository.
+//     */
+//    private final IPluginRepository pluginRepository;
+//    
+//    /**
+//     * The command repository.
+//     */
+//    private final CommandRepository commandRepository;
+    
     /**
      * Builds and initializes the context.
      * 
-     * @param eventListeners
-     *            the list of listeners
+     * @param bus
+     *            the event bus
      * @param currentCharset
      *            the configured charset
      */
-    JNRPEExecutionContext(final Collection<IJNRPEEventListener> eventListeners, final Charset currentCharset) {
-        this.eventListenersList = eventListeners;
+    JNRPEExecutionContext(final IJNRPEEventBus bus, 
+                    final Charset currentCharset,
+                    final IPluginRepository pluginRepo,
+                    final CommandRepository commandRepo) {
+        this.eventBus = bus;
         this.charset = currentCharset;
+//        this.pluginRepository = pluginRepo;
+//        this.commandRepository = commandRepo;
     }
 
-    /**
-     * Returns all the listeners.
-     * 
-     * @return the listeners
+    /* (non-Javadoc)
+     * @see it.jnrpe.IJNRPEExecutionContext#getEventBus()
      */
-    public final Collection<IJNRPEEventListener> getListeners() {
-        return eventListenersList;
+    public final IJNRPEEventBus getEventBus() {
+        return eventBus;
     }
 
-    /**
-     * Returns the charset.
-     * 
-     * @return the configured charset
+    /* (non-Javadoc)
+     * @see it.jnrpe.IJNRPEExecutionContext#getCharset()
      */
     public final Charset getCharset() {
         return charset;
     }
+
+    /* (non-Javadoc)
+     * @see it.jnrpe.IJNRPEExecutionContext#getPluginRepository()
+     */
+//    public IPluginRepository getPluginRepository() {
+//        return pluginRepository;
+//    }
+//
+//    /* (non-Javadoc)
+//     * @see it.jnrpe.IJNRPEExecutionContext#getCommandRepository()
+//     */
+//    public CommandRepository getCommandRepository() {
+//        return commandRepository;
+//    }
 }

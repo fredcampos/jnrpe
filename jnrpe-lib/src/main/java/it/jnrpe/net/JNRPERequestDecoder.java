@@ -94,14 +94,14 @@ public class JNRPERequestDecoder extends ReplayingDecoder<JNRPERequestDecoder.ST
 
     @Override
     protected final void decode(final ChannelHandlerContext ctx, final ByteBuf in, final List<Object> out) throws Exception {
-
-        switch (state()) {
+        
+        STAGE stage = state();
+        
+        switch (stage) {
         case PACKET_VERSION:
-            // packet.setPacketVersion(PacketVersion.fromIntValue(in.readShort()));
             packetVersion = PacketVersion.fromIntValue(in.readShort());
             checkpoint(STAGE.PACKET_TYPE_CODE);
         case PACKET_TYPE_CODE:
-            // packet.setPacketType(PacketType.fromIntValue(in.readShort()));
             PacketType type = PacketType.fromIntValue(in.readShort());
             switch (type) {
             case QUERY:
@@ -111,7 +111,7 @@ public class JNRPERequestDecoder extends ReplayingDecoder<JNRPERequestDecoder.ST
                 packet = new JNRPEResponse();
                 break;
             default:
-                throw new Exception("Unknown packet type");
+                throw new Exception("Unknown packet type: " + stage);
             }
 
             packet.setPacketVersion(packetVersion);

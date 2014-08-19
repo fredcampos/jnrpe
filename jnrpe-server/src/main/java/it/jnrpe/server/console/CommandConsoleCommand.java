@@ -15,6 +15,7 @@
  *******************************************************************************/
 package it.jnrpe.server.console;
 
+import it.jnrpe.IJNRPEExecutionContext;
 import it.jnrpe.JNRPE;
 import it.jnrpe.ReturnValue;
 import it.jnrpe.commands.CommandDefinition;
@@ -36,16 +37,18 @@ public class CommandConsoleCommand extends ConsoleCommand {
     private final String commandName;
     private final CommandRepository commandRepository;
     private final IPluginRepository pluginRepository;
-
-    public CommandConsoleCommand(ConsoleReader consoleReader, JNRPE jnrpe, String commandName, IPluginRepository pr, CommandRepository cr) {
+    private final IJNRPEExecutionContext context;
+    
+    public CommandConsoleCommand(ConsoleReader consoleReader, IPluginRepository pluginRepo, CommandRepository commandRepo, JNRPE jnrpe, String commandName) {
         super(consoleReader, jnrpe);
         this.commandName = commandName;
-        this.pluginRepository = pr;
-        this.commandRepository = cr;
+        this.pluginRepository = pluginRepo;
+        this.commandRepository = commandRepo;
+        this.context = jnrpe.getExecutionContext();
     }
 
-    public boolean execute(String[] args) throws Exception {
-        ReturnValue retVal = new CommandInvoker(pluginRepository, commandRepository, true, null).invoke(commandName, args);
+    public boolean execute(final String[] args) throws Exception {
+        ReturnValue retVal = new CommandInvoker(pluginRepository, commandRepository, true, context).invoke(commandName, args);
 
         if (retVal == null) {
             getConsole().println("An error has occurred executing the plugin. Null result received.");
@@ -58,12 +61,12 @@ public class CommandConsoleCommand extends ConsoleCommand {
 
     public String getCommandLine() {
         CommandDefinition commandDef = commandRepository.getCommand(commandName);
-        StringBuffer opts;
+        StringBuilder opts;
 
         if (commandDef.getArgs() != null) {
-            opts = new StringBuffer(commandDef.getArgs()).append(" ");
+            opts = new StringBuilder(commandDef.getArgs()).append(' ');
         } else {
-            opts = new StringBuffer(" ");
+            opts = new StringBuilder(" ");
         }
 
         for (CommandOption opt : commandDef.getOptions()) {

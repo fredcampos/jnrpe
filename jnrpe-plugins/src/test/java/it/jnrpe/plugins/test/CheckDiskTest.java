@@ -25,6 +25,12 @@ import java.io.File;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+/**
+ * Tests the check disk plugin.
+ * 
+ * @author Massimiliano Ziccardi
+ *
+ */
 public class CheckDiskTest {
 
     /**
@@ -40,7 +46,7 @@ public class CheckDiskTest {
     private float getPercentFromMessage(final String msg) {
         String stats = msg.substring(msg.indexOf('|') + 1);
         String percent = stats.split(";")[0].split("=")[1].replace('%', ' ').trim();
-        return Float.valueOf(percent);
+        return Float.parseFloat(percent);
     }
 
     /**

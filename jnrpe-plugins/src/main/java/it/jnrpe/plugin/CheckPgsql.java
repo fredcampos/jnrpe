@@ -84,17 +84,17 @@ public class CheckPgsql extends PluginBase {
         try {
             conn = getConnection(cl);
         } catch (ClassNotFoundException e) {
-            log.error("PostgreSQL driver library not found into the classpath: " + "download and put it in the same directory of " + "this plugin");
+            LOG.error(getContext(), "PostgreSQL driver library not found into the classpath: " + "download and put it in the same directory of " + "this plugin");
             throw new MetricGatheringException("Error accessing the PostgreSQL " + "server - JDBC driver not installed", Status.CRITICAL, e);
         } catch (Exception e) {
-            log.error("Error accessing the PostgreSQL server", e);
+            LOG.error(getContext(), "Error accessing the PostgreSQL server", e);
             throw new MetricGatheringException("Error accessing the PostgreSQL " + "server - ", Status.CRITICAL, e);
         } finally {
             closeConnection(conn);
         }
 
         Long end = System.currentTimeMillis();
-        Long elapsed = new Long((end - start) / 1000);
+        Long elapsed = Long.valueOf((end - start) / 1000);
 
         metricList.add(new Metric("conn", "Connection time : " + elapsed + "s", new BigDecimal(elapsed), new BigDecimal(0), null));
 
@@ -148,9 +148,7 @@ public class CheckPgsql extends PluginBase {
         props.setProperty("timeout", timeout);
         String url = "jdbc:postgresql://" + hostname + ":" + port + "/" + database;
         DriverManager.registerDriver((Driver) Class.forName("org.postgresql.Driver").newInstance());
-        Connection conn = DriverManager.getConnection(url, props);
-        return conn;
-
+        return DriverManager.getConnection(url, props);
     }
 
     /**

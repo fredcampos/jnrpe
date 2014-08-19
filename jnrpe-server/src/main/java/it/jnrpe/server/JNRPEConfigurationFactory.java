@@ -50,7 +50,8 @@ final class JNRPEConfigurationFactory {
         }
 
         if (conf == null) {
-            throw new ConfigurationException("Config file name must end with either '.ini' " + "(ini file) or '.xml' (xml file)");
+            throw new ConfigurationException("Config file name must end with either '.ini' " 
+                                + "(ini file) or '.xml' (xml file). Received file name is : " + new File(configurationFilePath).getName());
         }
 
         conf.load(new File(configurationFilePath));

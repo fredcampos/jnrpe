@@ -81,7 +81,7 @@ public class DynaPluginRepository extends PluginRepository {
      *             -
      */
     private void configurePlugins(final File fDir) throws PluginConfigurationException {
-        LOG.trace("READING PLUGIN CONFIGURATION FROM DIRECTORY " + fDir.getName());
+        LOG.trace("READING PLUGIN CONFIGURATION FROM DIRECTORY {}", fDir.getName());
         StreamManager streamMgr = new StreamManager();
 
         File[] vfJars = fDir.listFiles(JAR_FILE_FILTER);
@@ -100,7 +100,7 @@ public class DynaPluginRepository extends PluginRepository {
                 vUrls.add(vfJars[j].toURI().toURL());
             } catch (MalformedURLException e) {
                 // should never happen
-                throw new IllegalStateException(e);
+                throw new IllegalStateException(e.getMessage(), e);
             }
         }
 
@@ -127,13 +127,14 @@ public class DynaPluginRepository extends PluginRepository {
                     in.close();
 
                 } catch (Exception e) {
-                    LOG.error("Skipping plugin package contained in file '" + file.getName() + "' because of the following error : {}",
-                            new String[] { e.getMessage() }, e);
+                    LOG.error("Skipping plugin package contained in file '{}' because of the following error : {}",
+                            new String[] { file.getName(), e.getMessage() }, e);
                 } finally {
                     try {
                         jarFile.close();
                     } catch (Exception e) {
                         // Intentionally ignored...
+                        LOG.warn("An error has occurred closing jar file '{}'",file.getName(), e);
                     }
                 }
             }

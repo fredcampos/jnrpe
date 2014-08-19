@@ -19,6 +19,7 @@ import it.jnrpe.ICommandLine;
 import it.jnrpe.ReturnValue;
 import it.jnrpe.Status;
 import it.jnrpe.utils.BadThresholdException;
+import it.jnrpe.utils.internal.InjectionUtils;
 
 import java.io.PrintWriter;
 import java.util.Collection;
@@ -109,10 +110,13 @@ public final class PluginProxy extends PluginBase {
             p.setGroup(mainOptionsGroup);
             p.setHelpFormatter(hf);
             CommandLine cl = p.parse(argsAry);
-            if (getListeners() != null && proxiedPlugin instanceof IPluginInterfaceEx) {
-                ((IPluginInterfaceEx) proxiedPlugin).addListeners(getListeners());
-            }
-
+            /*if (proxiedPlugin instanceof IPluginInterfaceEx) {
+                ((IPluginInterfaceEx) proxiedPlugin).setContext(this.getContext());
+            }*/
+            
+            // Inject the context...
+            InjectionUtils.inject(proxiedPlugin, getContext());
+            
             Thread.currentThread().setContextClassLoader(proxiedPlugin.getClass().getClassLoader());
 
             ReturnValue retValue = proxiedPlugin.execute(new PluginCommandLine(cl));
@@ -124,9 +128,13 @@ public final class PluginProxy extends PluginBase {
             }
 
             return retValue;
+        } catch (BadThresholdException bte) {
+            throw bte;
         } catch (OptionException e) {
-            // m_Logger.error("ERROR PARSING PLUGIN ARGUMENTS", e);
-            return new ReturnValue(Status.UNKNOWN, e.getMessage());
+            
+            String msg = e.getMessage();
+            LOG.error(getContext(), "Error parsing plugin '" + getPluginName() + "' command line : " + msg, e);
+            return new ReturnValue(Status.UNKNOWN, msg);
         }
     }
 
@@ -138,7 +146,7 @@ public final class PluginProxy extends PluginBase {
      */
     public void printHelp(final PrintWriter out) {
         HelpFormatter hf = new HelpFormatter();
-        StringBuffer sbDivider = new StringBuffer("=");
+        StringBuilder sbDivider = new StringBuilder("=");
         while (sbDivider.length() < hf.getPageWidth()) {
             sbDivider.append("=");
         }

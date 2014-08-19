@@ -32,9 +32,9 @@ public class Driver extends MockDriver {
     static boolean _slaveSQLRunning = true;
     static int _slaveBehindSeconds = 0;
 
-    public Connection newConnection(String url, Properties info) throws SQLException {
+    public Connection newConnection(final String url, final Properties info) throws SQLException {
 
-        if (url.equals(RIGHTDBURL)) {
+        if (RIGHTDBURL.equals(url)) {
             return new DbConnectionMock(new MySQLQueryResolver());
         }
 
@@ -49,7 +49,6 @@ public class Driver extends MockDriver {
         _slaveBehindSeconds = slaveBehindSeconds;
     }
 
-    @Override
     public boolean acceptsURL(String url) throws SQLException {
         return url.startsWith("jdbc:mysql:");
     }

@@ -48,7 +48,7 @@ class IniJNRPEConfiguration extends JNRPEConfiguration {
 
             // Defaults accept params
             String sAcceptParams = confParser.getString("server.accept-params", "true");
-            serverConf.setAcceptParams(sAcceptParams.equalsIgnoreCase("true") || sAcceptParams.equalsIgnoreCase("yes"));
+            serverConf.setAcceptParams("true".equalsIgnoreCase(sAcceptParams) || "yes".equalsIgnoreCase(sAcceptParams));
             serverConf.setPluginPath(confParser.getString("server.plugin-path", "."));
 
             serverConf.setBackLogSize(confParser.getInt("server.backlog-size", ServerSection.DEFAULT_BACKLOG));
@@ -78,10 +78,10 @@ class IniJNRPEConfiguration extends JNRPEConfiguration {
                     String sPluginName = vElements[0];
 
                     // Rebuilding the commandline
-                    StringBuffer cmdLine = new StringBuffer();
+                    StringBuilder cmdLine = new StringBuilder();
 
                     for (int i = 1; i < vElements.length; i++) {
-                        cmdLine.append(quoteAndEscape(vElements[i])).append(" ");
+                        cmdLine.append(quoteAndEscape(vElements[i])).append(' ');
                     }
 
                     commandSection.addCommand(sCommandName, sPluginName, cmdLine.toString());
@@ -105,8 +105,7 @@ class IniJNRPEConfiguration extends JNRPEConfiguration {
             return string;
         }
 
-        String res = "\"" + string.replaceAll("\"", "\\\"") + "\"";
-        return res;
+        return "\"" + string.replaceAll("\"", "\\\"") + "\"";
     }
 
 }

@@ -107,7 +107,7 @@ public class CheckBySsh extends PluginBase {
             // metrics.add(new Metric("session",
             // "SSH not started, permission denied. " + e.getMessage(),
             // new BigDecimal(0), null, null));
-            log.debug(e.getMessage(), e);
+            LOG.debug(getContext(), e.getMessage(), e);
             throw new MetricGatheringException("SSH not started, permission denied.", Status.UNKNOWN, e);
         }
         try {
@@ -132,7 +132,7 @@ public class CheckBySsh extends PluginBase {
             throw new MetricGatheringException(e2.getMessage(), Status.UNKNOWN, e2);
         }
 
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         byte[] tmp = new byte[1024];
         int exitStatus = 0;
         while (true) {
@@ -153,15 +153,14 @@ public class CheckBySsh extends PluginBase {
             try {
                 Thread.sleep(1000);
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.error(getContext(), "gatherMetrics - " + e.getMessage(), e);
             }
         }
         if (channel != null) {
             channel.disconnect();
         }
-        if (session != null) {
-            session.disconnect();
-        }
+
+        session.disconnect();
         long response = (System.currentTimeMillis() - then) / 1000;
         metrics.add(new Metric("response", "", new BigDecimal(response), null, null));
         // sb.append("\nexit-status: " + channel.getExitStatus());

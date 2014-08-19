@@ -15,6 +15,8 @@
  *******************************************************************************/
 package it.jnrpe.plugin.utils;
 
+import it.jnrpe.utils.StreamManager;
+
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -85,38 +87,45 @@ public class HttpUtils {
     }
 
     /**
-     * Submits http post data to an HttpURLConnection
+     * Submits http post data to an HttpURLConnection.
      * 
      * @param conn
      * @param encodedData
      * @throws IOException
      */
     public static void sendPostData(HttpURLConnection conn, String encodedData) throws IOException {
-        conn.setDoOutput(true);
-        conn.setRequestMethod("POST");
-        if (conn.getRequestProperty("Content-Type") == null) {
-            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-        }
-        if (encodedData != null) {
-            if (conn.getRequestProperty("Content-Length") == null) {
-                conn.setRequestProperty("Content-Length", "" + encodedData.getBytes("UTF-8").length);
+
+        StreamManager sm = new StreamManager();
+
+        try {
+
+            conn.setDoOutput(true);
+            conn.setRequestMethod("POST");
+            if (conn.getRequestProperty("Content-Type") == null) {
+                conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
             }
-            DataOutputStream out = new DataOutputStream(conn.getOutputStream());
-            out.write(encodedData.getBytes());
-            out.close();
+            if (encodedData != null) {
+                if (conn.getRequestProperty("Content-Length") == null) {
+                    conn.setRequestProperty("Content-Length", String.valueOf(encodedData.getBytes("UTF-8").length));
+                }
+                DataOutputStream out = new DataOutputStream(sm.handle(conn.getOutputStream()));
+                out.write(encodedData.getBytes());
+                out.close();
+            }
+        } finally {
+            sm.closeAll();
         }
     }
 
     private static String doRequest(final URL url, final Properties requestProps, final Integer timeout, boolean includeHeaders, boolean ignoreBody,
             String method) throws Exception {
-        if (method.toUpperCase().equals("POST")) {
+        if ("POST".equalsIgnoreCase(method)) {
             throw new Exception("use it.jnrpe.plugin.utils.HttpUtils.doPOST instead.");
         }
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         setRequestProperties(requestProps, conn, timeout);
         conn.setRequestMethod("GET");
-        String response = parseHttpResponse(conn, includeHeaders, ignoreBody);
-        return response;
+        return parseHttpResponse(conn, includeHeaders, ignoreBody);
     }
 
     /**
@@ -153,26 +162,33 @@ public class HttpUtils {
      * @throws IOException
      */
     public static String parseHttpResponse(HttpURLConnection conn, boolean includeHeaders, boolean ignoreBody) throws IOException {
-        StringBuffer buff = new StringBuffer();
+        StringBuilder buff = new StringBuilder();
         if (includeHeaders) {
-            buff.append(conn.getResponseCode() + " " + conn.getResponseMessage() + "\n");
+            buff.append(conn.getResponseCode()).append(' ').append(conn.getResponseMessage()).append('\n');
             int idx = (conn.getHeaderFieldKey(0) == null) ? 1 : 0;
             while (true) {
                 String key = conn.getHeaderFieldKey(idx);
                 if (key == null) {
                     break;
                 }
-                buff.append(key + ": " + conn.getHeaderField(idx) + "\n");
+                buff.append(key).append(": ").append(conn.getHeaderField(idx)).append('\n');
                 ++idx;
             }
         }
-        if (!ignoreBody) {
-            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-            String inputLine;
-            while ((inputLine = in.readLine()) != null) {
-                buff.append(inputLine);
+
+        StreamManager sm = new StreamManager();
+
+        try {
+            if (!ignoreBody) {
+                BufferedReader in = (BufferedReader) sm.handle(new BufferedReader(new InputStreamReader(conn.getInputStream())));
+                String inputLine;
+                while ((inputLine = in.readLine()) != null) {
+                    buff.append(inputLine);
+                }
+                in.close();
             }
-            in.close();
+        } finally {
+            sm.closeAll();
         }
         return buff.toString();
     }

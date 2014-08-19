@@ -15,41 +15,57 @@
  *******************************************************************************/
 package it.jnrpe.plugin.utils;
 
+import it.jnrpe.utils.StreamManager;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
 /**
- * Utility class for running shell commands
+ * Utility class for running shell commands.
  * 
  *
  * @author Frederico Campos
  */
-public class ShellUtils {
+public final class ShellUtils {
 
     /**
-     * Executes a system command with arguments and returns the output
-     * 
-     * @param command
-     * @param encoding
-     * @return command output
-     * @throws IOException
+     * Avoid instantiations.
      */
-    public static String executeSystemCommandAndGetOutput(String[] command, String encoding) throws IOException {
+    private ShellUtils() {
+        
+    }
+    
+    /**
+     * Executes a system command with arguments and returns the output.
+     * 
+     * @param command command to be executed
+     * @param encoding encoding to be used
+     * @return command output
+     * @throws IOException on any error
+     */
+    public static String executeSystemCommandAndGetOutput(final String[] command, final String encoding) throws IOException {
         Process p = Runtime.getRuntime().exec(command);
-        InputStream input = p.getInputStream();
-        StringBuffer lines = new StringBuffer();
-        String line = null;
-        BufferedReader in = new BufferedReader(new InputStreamReader(input, encoding));
-        while ((line = in.readLine()) != null) {
-            lines.append(line).append("\n");
+        
+        StreamManager sm = new StreamManager();
+        
+        try {
+            InputStream input = sm.handle(p.getInputStream());
+            StringBuilder lines = new StringBuilder();
+            String line = null;
+            BufferedReader in = (BufferedReader) sm.handle(new BufferedReader(new InputStreamReader(input, encoding)));
+            while ((line = in.readLine()) != null) {
+                lines.append(line).append('\n');
+            }
+            return lines.toString();
+        } finally {
+            sm.closeAll();
         }
-        return lines.toString();
     }
 
     /**
-     * Check if we are running in a Windows environment
+     * Check if we are running in a Windows environment.
      * 
      * @return true if windows
      */
@@ -60,14 +76,14 @@ public class ShellUtils {
 
     /**
      * 
-     * Check if name of process is a windows idle process
+     * Check if name of process is a windows idle process.
      * 
-     * @param proc
+     * @param proc process to be checked
      * @return true if idle process, false otherwise
      */
-    public static boolean isWindowsIdleProc(String proc) {
-        proc = proc.trim().toLowerCase();
-        if (proc.equals("system idle process") || proc.contains("inactiv") || proc.equals("system")) {
+    public static boolean isWindowsIdleProc(final String proc) {
+        String process = proc.trim().toLowerCase();
+        if ("system idle process".equals(process) || process.contains("inactiv") || "system".equals(process)) {
             return true;
         }
         return false;

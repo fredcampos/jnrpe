@@ -13,22 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *******************************************************************************/
-package it.jnrpe.events;
+package it.jnrpe.plugins;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * This object represent an event 'MESSAGE' parameter. It is usually used with
- * the LogEvent events.
- *
+ * Annotation of injected JNRPE variables.
+ * Use it if you want JNRPE to inject values inside your plugin.
+ * 
+ * Supported injections are:
+ * <ul>
+ * <li>IJNRPEExecutionContext
+ * </ul>
  * @author Massimiliano Ziccardi
  */
-public class EventMessageParam extends EventParam {
-    /**
-     * Builds and initializes the message parameter.
-     *
-     * @param message
-     *            The message
-     */
-    public EventMessageParam(final String message) {
-        super("MESSAGE", message);
-    }
+@Target(value = { ElementType.FIELD })
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Inject {
 }

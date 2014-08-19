@@ -13,22 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *******************************************************************************/
-package it.jnrpe.events;
+package it.jnrpe;
+
+import it.jnrpe.commands.CommandRepository;
+import it.jnrpe.plugins.IPluginRepository;
+
+import java.nio.charset.Charset;
 
 /**
- * This class represent the interface an object must implement to be able to
- * receive events from JNRPE.
- *
+ * The JNRPE execution context contains all the context information useful during 
+ * a plugin execution.
+ * 
  * @author Massimiliano Ziccardi
  */
-public interface IJNRPEEventListener {
+public interface IJNRPEExecutionContext {
+
     /**
-     * This method receives the event and reacts.
-     *
-     * @param sender
-     *            The source of the event
-     * @param event
-     *            The event
+     * Returns all the listeners.
+     * 
+     * @return the event bus
      */
-    void receive(Object sender, IJNRPEEvent event);
+    IJNRPEEventBus getEventBus();
+
+    /**
+     * Returns the charset.
+     * 
+     * @return the configured charset
+     */
+    Charset getCharset();
 }

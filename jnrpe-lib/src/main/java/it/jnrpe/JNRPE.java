@@ -28,9 +28,8 @@ import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.timeout.IdleStateHandler;
 import it.jnrpe.commands.CommandInvoker;
 import it.jnrpe.commands.CommandRepository;
-import it.jnrpe.events.EventsUtil;
-import it.jnrpe.events.IJNRPEEventListener;
-import it.jnrpe.events.LogEvent;
+import it.jnrpe.events.JNRPEStatusEvent;
+import it.jnrpe.events.JNRPEStatusEvent.STATUS;
 import it.jnrpe.net.JNRPEIdleStateHandler;
 import it.jnrpe.net.JNRPERequestDecoder;
 import it.jnrpe.net.JNRPEResponseEncoder;
@@ -50,7 +49,6 @@ import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -65,6 +63,16 @@ import javax.net.ssl.SSLException;
  */
 public final class JNRPE {
 
+    /**
+     * The JNRPE logger.
+     */
+    private final JNRPELogger LOG = new JNRPELogger(this);
+    
+    /**
+     * The current execution context.
+     */
+    private final IJNRPEExecutionContext context;
+    
     /**
      * Default number of accepted connections.
      */
@@ -103,11 +111,6 @@ public final class JNRPE {
      * The list of accepted clients.
      */
     private Collection<String> acceptedHostsList = new ArrayList<String>();
-
-    /**
-     * All the listeners.
-     */
-    private Collection<IJNRPEEventListener> eventListenersSet = new HashSet<IJNRPEEventListener>();
 
     /**
      * Charset that will be used by JNRPE.
@@ -163,6 +166,7 @@ public final class JNRPE {
         this.maxAcceptedConnections = DEFAULT_MAX_ACCEPTED_CONNECTIONS;
         readTimeout = 10;
         writeTimeout = 60;
+        this.context = new JNRPEExecutionContext(new JNRPEEventBus(), charset, pluginRepo, commandRepo);
     }
 
     /**
@@ -195,6 +199,7 @@ public final class JNRPE {
         this.maxAcceptedConnections = DEFAULT_MAX_ACCEPTED_CONNECTIONS;
         readTimeout = 10;
         writeTimeout = 60;
+        this.context = new JNRPEExecutionContext(new JNRPEEventBus(), newCharset, pluginRepo, commandRepo);
     }
 
     /**
@@ -219,12 +224,15 @@ public final class JNRPE {
      * @param writeTimeoutSeconds
      *            The maximum number of seconds to wait for a plugin to return a
      *            result
-     * @param eventListeners
-     *            The collection of listeners that will receive JNRPE events
      */
-    JNRPE(final IPluginRepository pluginRepo, final CommandRepository commandRepo, final Charset newCharset, final boolean acceptParameters,
-            final Collection<String> acceptedHostsCollection, final int maxConnections, final int readTimeoutSeconds, final int writeTimeoutSeconds,
-            final Collection<IJNRPEEventListener> eventListeners) {
+    JNRPE(final IPluginRepository pluginRepo, 
+            final CommandRepository commandRepo, 
+            final Charset newCharset, 
+            final boolean acceptParameters,
+            final Collection<String> acceptedHostsCollection, 
+            final int maxConnections, 
+            final int readTimeoutSeconds, 
+            final int writeTimeoutSeconds) {
         if (pluginRepo == null) {
             throw new IllegalArgumentException("Plugin repository cannot be null");
         }
@@ -237,11 +245,10 @@ public final class JNRPE {
         this.charset = newCharset;
         this.acceptParams = acceptParameters;
         this.acceptedHostsList = acceptedHostsCollection;
-        this.eventListenersSet = eventListeners;
         this.maxAcceptedConnections = maxConnections;
         this.readTimeout = readTimeoutSeconds;
         this.writeTimeout = writeTimeoutSeconds;
-
+        this.context = new JNRPEExecutionContext(new JNRPEEventBus(), newCharset, pluginRepo, commandRepo);
     }
 
     /**
@@ -259,20 +266,6 @@ public final class JNRPE {
     }
 
     /**
-     * Adds a new event listener.
-     * 
-     * @param listener
-     *            The event listener to be added
-     * 
-     * @deprecated The JNRPE object will become immutable as of version 2.0.5.
-     *             Use {@link JNRPEBuilder} instead
-     */
-    @Deprecated
-    public void addEventListener(final IJNRPEEventListener listener) {
-        eventListenersSet.add(listener);
-    }
-
-    /**
      * Creates, configures and returns the SSL engine.
      * 
      * @return the SSL Engine
@@ -287,7 +280,11 @@ public final class JNRPE {
      * @throws KeyManagementException
      *             key management error
      */
-    private SSLEngine getSSLEngine() throws KeyStoreException, CertificateException, IOException, UnrecoverableKeyException, KeyManagementException {
+    protected SSLEngine getSSLEngine() throws KeyStoreException, 
+                    CertificateException, 
+                    IOException, 
+                    UnrecoverableKeyException, 
+                    KeyManagementException {
 
         // Open the KeyStore Stream
         StreamManager h = new StreamManager();
@@ -309,7 +306,7 @@ public final class JNRPE {
             kmf.init(ks, passphrase);
             ctx.init(kmf.getKeyManagers(), null, new java.security.SecureRandom());
         } catch (NoSuchAlgorithmException e) {
-            throw new SSLException("Unable to initialize SSLSocketFactory.\n" + e.getMessage());
+            throw new SSLException("Unable to initialize SSLSocketFactory.\n" + e.getMessage(), e);
         } finally {
             h.closeAll();
         }
@@ -326,7 +323,7 @@ public final class JNRPE {
      */
     private ServerBootstrap getServerBootstrap(final boolean useSSL) {
 
-        final CommandInvoker invoker = new CommandInvoker(pluginRepository, commandRepository, acceptParams, eventListenersSet);
+        final CommandInvoker invoker = new CommandInvoker(pluginRepository, commandRepository, acceptParams, getExecutionContext());
 
         ServerBootstrap b = new ServerBootstrap();
         b.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class).childHandler(new ChannelInitializer<SocketChannel>() {
@@ -342,12 +339,13 @@ public final class JNRPE {
                 }
 
                 ch.pipeline()
-                        .addLast(new JNRPERequestDecoder(), new JNRPEResponseEncoder(), new JNRPEServerHandler(invoker, eventListenersSet))
+                        .addLast(new JNRPERequestDecoder(), new JNRPEResponseEncoder(), new JNRPEServerHandler(invoker, context))
                         .addLast("idleStateHandler", new IdleStateHandler(readTimeout, writeTimeout, 0))
-                        .addLast("jnrpeIdleStateHandler",
-                                new JNRPEIdleStateHandler(new JNRPEExecutionContext(JNRPE.this.eventListenersSet, Charset.defaultCharset())));
+                        .addLast(
+                                "jnrpeIdleStateHandler",
+                                new JNRPEIdleStateHandler(context));
             }
-        }).option(ChannelOption.SO_BACKLOG, this.maxAcceptedConnections).childOption(ChannelOption.SO_KEEPALIVE, true);
+        }).option(ChannelOption.SO_BACKLOG, this.maxAcceptedConnections).childOption(ChannelOption.SO_KEEPALIVE, Boolean.TRUE);
 
         return b;
     }
@@ -373,10 +371,11 @@ public final class JNRPE {
 
             public void operationComplete(final ChannelFuture future) throws Exception {
                 if (future.isSuccess()) {
-                    EventsUtil.sendEvent(eventListenersSet, this, LogEvent.INFO, "Listening on " + (useSSL ? "SSL/" : "") + address + ":" + port);
+                    context.getEventBus().post(new JNRPEStatusEvent(STATUS.STARTED, this, "JNRPE Server started"));
+                    LOG.info(context, "Listening on " + (useSSL ? "SSL/" : "") + address + ":" + port);
                 } else {
-                    EventsUtil.sendEvent(eventListenersSet, this, LogEvent.ERROR, "Unable to listen on " + (useSSL ? "SSL/" : "") + address + ":"
-                            + port, future.cause());
+                    getExecutionContext().getEventBus().post(new JNRPEStatusEvent(STATUS.FAILED, this, "JNRPE Server start failed"));
+                    LOG.error(context, "Unable to listen on " + (useSSL ? "SSL/" : "") + address + ":" + port, future.cause());
                 }
             }
         });
@@ -397,10 +396,23 @@ public final class JNRPE {
     }
 
     /**
+     * Returns the current JNRPE Execution context. An execution context
+     * contains useful informations such the encoding to be used ad the list of
+     * listeners configured to receive the events.
+     * 
+     * @return the current JNRPE Execution context.
+     */
+    public IJNRPEExecutionContext getExecutionContext() {
+        //return new JNRPEExecutionContext(eventBus, charset, pluginRepository, commandRepository);
+        return context;
+    }
+
+    /**
      * Shuts down the server.
      */
     public void shutdown() {
         workerGroup.shutdownGracefully().syncUninterruptibly();
         bossGroup.shutdownGracefully().syncUninterruptibly();
+        getExecutionContext().getEventBus().post(new JNRPEStatusEvent(STATUS.STOPPED, this, "JNRPE Server stopped"));
     }
 }

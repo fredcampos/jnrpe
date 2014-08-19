@@ -29,6 +29,7 @@ import java.net.SocketTimeoutException;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.List;
 
 import javax.net.SocketFactory;
 import javax.net.ssl.SSLContext;
@@ -87,6 +88,49 @@ public class JNRPEClient {
     private int communicationTimeout = DEFAULT_TIMEOUT;
 
     /**
+     * The trust manager. 
+     */
+    private static final TrustAllManager TRUSTALL_MGR = new TrustAllManager();
+    
+    /**
+     * Trust manager implementation.
+     * This trust manager allows connection on any host.
+     * 
+     * @author Massimiliano Ziccardi
+     */
+    private static final class TrustAllManager implements X509TrustManager {
+
+        /**
+         * Simply returns null.
+         * @return null
+         */
+        public X509Certificate[] getAcceptedIssuers() {
+            return null;
+        }
+
+        /**
+         * No checks performed.
+         * 
+         * @param chain certificate chain
+         * @param authType authentication type
+         * @throws CertificateException on errors.
+         */
+        public void checkServerTrusted(final X509Certificate[] chain, final String authType) {
+
+        }
+
+        /**
+         * No checks performed.
+         * 
+         * @param chain certificate chain
+         * @param authType authentication type
+         * @throws CertificateException on errors.
+         */
+        public void checkClientTrusted(final X509Certificate[] chain, final String authType) {
+        }
+    }
+    
+    /**
      * Instantiates a JNRPE client.
      * 
      * @param sJNRPEServerIP
@@ -108,20 +152,7 @@ public class JNRPEClient {
      * @return The custom trustmanager
      */
     private TrustManager getTrustManager() {
-        // Trust all certificates
-        return new X509TrustManager() {
-
-            public X509Certificate[] getAcceptedIssuers() {
-                return null;
-            }
-
-            public void checkServerTrusted(final X509Certificate[] chain, final String authType) throws CertificateException {
-
-            }
-
-            public void checkClientTrusted(final X509Certificate[] chain, final String authType) throws CertificateException {
-            }
-        };
+        return TRUSTALL_MGR;
     }
 
     /**
@@ -163,8 +194,9 @@ public class JNRPEClient {
             JNRPEResponse res = new JNRPEResponse(in);
 
             return new ReturnValue(Status.fromIntValue(res.getResultCode()), res.getMessage());
+        } catch (RuntimeException re) {
+            throw re;
         } catch (Exception e) {
-            // e.printStackTrace();
             throw new JNRPEClientException(e);
         } finally {
             if (s != null) {
@@ -222,7 +254,7 @@ public class JNRPEClient {
                 .withShortName("p")
                 .withDescription("The port on which the daemon " + "is running (default=5666)")
                 .withArgument(
-                        aBuilder.withName("port").withMinimum(1).withMaximum(1).withDefault(new Long(DEFAULT_PORT)).withValidator(positiveInt)
+                        aBuilder.withName("port").withMinimum(1).withMaximum(1).withDefault(Long.valueOf(DEFAULT_PORT)).withValidator(positiveInt)
                                 .create()).create();
 
         DefaultOption timeoutOption = oBuilder
@@ -230,7 +262,7 @@ public class JNRPEClient {
                 .withShortName("t")
                 .withDescription("Number of seconds before connection " + "times out (default=10)")
                 .withArgument(
-                        aBuilder.withName("timeout").withMinimum(1).withMaximum(1).withDefault(new Long(DEFAULT_TIMEOUT)).withValidator(positiveInt)
+                        aBuilder.withName("timeout").withMinimum(1).withMaximum(1).withDefault(Long.valueOf(DEFAULT_TIMEOUT)).withValidator(positiveInt)
                                 .create()).create();
 
         DefaultOption commandOption = oBuilder.withLongName("command").withShortName("c")
@@ -250,9 +282,7 @@ public class JNRPEClient {
         Group executionOption = gBuilder.withOption(nosslOption).withOption(unknownOption).withOption(hostOption).withOption(portOption)
                 .withOption(timeoutOption).withOption(commandOption).withOption(argsOption).create();
 
-        Group mainGroup = gBuilder.withOption(executionOption).withOption(helpOption).withMinimum(1).withMaximum(1).create();
-
-        return mainGroup;
+        return gBuilder.withOption(executionOption).withOption(helpOption).withMinimum(1).withMaximum(1).create();
     }
 
     /**
@@ -277,7 +307,7 @@ public class JNRPEClient {
     private static void printUsage(final Exception e) {
         printVersion();
 
-        StringBuffer sbDivider = new StringBuffer("=");
+        StringBuilder sbDivider = new StringBuilder("=");
 
         if (e != null) {
             System.out.println(e.getMessage() + "\n");
@@ -305,7 +335,6 @@ public class JNRPEClient {
 
         hf.setGroup(configureCommandLine());
         hf.print();
-        System.exit(0);
     }
 
     /**
@@ -332,21 +361,23 @@ public class JNRPEClient {
             timeoutAsUnknown = cli.hasOption("--unknown");
 
             String sHost = (String) cli.getValue("--host");
-            Long port = (Long) cli.getValue("--port", new Long(DEFAULT_PORT));
+            Long port = (Long) cli.getValue("--port", Long.valueOf(DEFAULT_PORT));
             String sCommand = (String) cli.getValue("--command");
 
             JNRPEClient client = new JNRPEClient(sHost, port.intValue(), !cli.hasOption("--nossl"));
-            client.setTimeout(((Long) cli.getValue("--timeout", new Long(DEFAULT_TIMEOUT))).intValue());
+            client.setTimeout(((Long) cli.getValue("--timeout", Long.valueOf(DEFAULT_TIMEOUT))).intValue());
 
             @SuppressWarnings("unchecked")
-            ReturnValue ret = client.sendCommand(sCommand, (String[]) cli.getValues("--arglist").toArray(new String[0]));
+            List<String> argList = cli.getValues("--arglist");
+            ReturnValue ret = client.sendCommand(sCommand, argList.toArray(new String[argList.size()]));
 
             System.out.println(ret.getMessage());
             System.exit(ret.getStatus().intValue());
         } catch (JNRPEClientException exc) {
             Status returnStatus = null;
 
-            if (timeoutAsUnknown && exc.getCause() != null && exc.getCause() instanceof SocketTimeoutException) {
+            Throwable cause = exc.getCause();
+            if (timeoutAsUnknown && cause instanceof SocketTimeoutException) {
                 returnStatus = Status.UNKNOWN;
             } else {
                 returnStatus = Status.CRITICAL;

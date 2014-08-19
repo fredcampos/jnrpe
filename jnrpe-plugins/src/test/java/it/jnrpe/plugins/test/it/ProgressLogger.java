@@ -29,7 +29,7 @@ import org.testng.ITestResult;
  */
 public class ProgressLogger implements IInvokedMethodListener {
 
-	private String getMethodName(IInvokedMethod m) {
+	private String getMethodName(final IInvokedMethod m) {
 		if (!m.isTestMethod())
 			return null;
 
@@ -70,6 +70,8 @@ public class ProgressLogger implements IInvokedMethodListener {
 			System.out.println("*** PARTIALLY FAILED ***");
 			break;
 		case ITestResult.STARTED:
+		default:
+		        break;
 		}
 
 		if (testResult.getThrowable() != null) {
